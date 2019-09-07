@@ -183,7 +183,7 @@ export default class MessageRouter implements allowEvent {
    * @api private
    */
   public routes() {
-    return async (ctx: koaContext, next?: Function) => {
+    return async (ctx: koaContext) => {
       const reqBody: WebhookRequestBody = ctx.request.body;
       const events: WebhookEvent[] = reqBody.events;
 

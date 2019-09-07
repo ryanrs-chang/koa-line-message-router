@@ -1,79 +1,246 @@
-// import MessageRouter from "../src/app";
-import MessageRouter from "../dist/app";
+import MessageRouter from "../src/app";
+import joinMessage from "./messages/join";
+import textMessage from "./messages/textMessage";
+import { Context } from "koa";
 
-function delay() {
-  return new Promise(function(resolve, reject) {
-    setTimeout(function() {
-      resolve("我是傳下去的值");
-    }, 1000);
-  });
+function delay(ms = 1) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-describe("testing message router", () => {
-  let router = null;
+function requestHelper(...messages) {
+  const events = [];
+
+  messages.forEach(m => events.push(m));
+
+  return {
+    request: {
+      body: {
+        events
+      }
+    }
+  } as Context;
+}
+
+describe("testing middleware", () => {
+  let router: MessageRouter = null;
   beforeEach(() => {
     router = new MessageRouter();
   });
 
-  test("create", async () => {
-    // router.use(async (ctx, next) => {
-    //   //
-    //   console.log("middleware 1");
-    //   next();
-    // });
+  test("two middleware", async () => {
+    const route = [];
+    router.use(async (ctx, next) => {
+      route.push(1);
+      await next();
+      route.push(2);
+    });
+
+    router.use(async (ctx, next) => {
+      route.push(3);
+      await next();
+      route.push(4);
+    });
+
+    const dispatch = router.routes();
+    await dispatch(requestHelper(joinMessage));
+    expect(route).toEqual([1, 3, 4, 2]);
+  });
+
+  test("test no 'await' next()", async () => {
+    const route = [];
+
+    router.use(async (ctx, next) => {
+      route.push(1);
+      next();
+      route.push(2);
+    });
+
+    router.use(async (ctx, next) => {
+      route.push(3);
+      await next();
+      route.push(4);
+    });
+
+    const dispatch = router.routes();
+    await dispatch(requestHelper(joinMessage));
+    expect(route).toEqual([1, 3, 2, 4]);
+  });
+
+  test("test middleware and handle 'join' function", async () => {
+    const route = [];
+
+    router.use(async (ctx, next) => {
+      route.push(1);
+      await next();
+      route.push(2);
+    });
+
+    router.use(async (ctx, next) => {
+      route.push(3);
+      await next();
+      route.push(4);
+    });
+
+    router.message(async () => {
+      route.push(5);
+    });
+
+    router.join(async () => {
+      route.push(6);
+    });
+
+    const dispatch = router.routes();
+    await dispatch(requestHelper(joinMessage));
+    expect(route).toEqual([1, 3, 6, 4, 2]);
+  });
+
+  test("test mixed middleware and handle function for 'message' order", async () => {
+    const route = [];
+
+    router.use(async (ctx, next) => {
+      route.push(1);
+      await next();
+      route.push(2);
+    });
+
+    router.message(async () => {
+      route.push(3);
+    });
+
+    router.use(async (ctx, next) => {
+      route.push(4);
+      await next();
+      route.push(5);
+    });
+
+    router.join(async () => {
+      route.push(6);
+    });
+
+    const dispatch = router.routes();
+    await dispatch(requestHelper(joinMessage));
+    expect(route).toEqual([1, 4, 6, 5, 2]);
+  });
+
+  test("test mixed middleware and handle function", async () => {
+    const route = [];
+
+    router.use(async (ctx, next) => {
+      route.push(1);
+      await next();
+      route.push(2);
+    });
+
+    router.join(async () => {
+      route.push(3);
+    });
+
+    router.use(async (ctx, next) => {
+      route.push(4);
+      await next();
+      route.push(5);
+    });
+
+    router.message(async () => {
+      route.push(6);
+    });
+
+    const dispatch = router.routes();
+    await dispatch(requestHelper(joinMessage));
+    expect(route).toEqual([1, 3, 2]);
+  });
+
+  test("test handle function route", async () => {
+    const route = [];
+
+    router.use(async (ctx, next) => {
+      route.push(1);
+      await next();
+      route.push(2);
+    });
 
     router.join(
       async (ctx, next) => {
-        console.log("1 start");
-        await delay();
-
+        route.push(3);
         await next();
-        console.log("1 done");
+        route.push(4);
       },
-      async (ctx, next) => {
-        console.log("2 start");
-        // await delay();
-        await next();
-        console.log("2 done");
-      },
-      async (ctx, next) => {
-        console.log("3 start");
-        // await delay();
-        await next();
-        console.log("3 done");
-      },
-      async (ctx, next) => {
-        console.log("4 start");
-        // await delay();
-        await next();
-        console.log("4 done");
-      },
-      async (ctx, next) => {
-        console.log("join");
-        await next();
+      async ctx => {
+        route.push(5);
       }
     );
 
-    const ctx = {
-      request: {
-        body: {
-          events: [
-            {
-              type: "join"
-            }
-          ]
-        }
-      }
-    };
+    const dispatch = router.routes();
+    await dispatch(requestHelper(joinMessage));
+    expect(route).toEqual([1, 3, 5, 4, 2]);
+  });
+});
 
-    router.dispatchEvent(ctx, {});
+describe("testing multi events", () => {
+  let router: MessageRouter = null;
+  beforeEach(() => {
+    router = new MessageRouter();
+  });
 
-    // const compose = router.routes();
-    // await compose(
-    //   ctx,
-    //   () => {
-    //     console.log("call next");
-    //   }
-    // );
+  test("'all message' and 'join' route", async () => {
+    const messageRoute = [];
+    const joinRoute = [];
+
+    router.message(async (ctx, next) => {
+      messageRoute.push(1);
+      await next();
+      messageRoute.push(2);
+    });
+
+    router.join(async (ctx, next) => {
+      joinRoute.push(3);
+      await next();
+      joinRoute.push(4);
+    });
+
+    const dispatch = router.routes();
+    await dispatch(requestHelper(joinMessage, textMessage));
+    expect(messageRoute).toEqual([1, 2]);
+    expect(joinRoute).toEqual([3, 4]);
+  });
+
+  test("shdould 'test' regext is successful for specific message route", async () => {
+    const route = [];
+
+    router.message(/route 1/, async (ctx, next) => {
+      route.push(1);
+    });
+
+    router.message(/test/, async (ctx, next) => {
+      route.push(2);
+    });
+
+    textMessage.message.text = "test";
+
+    const dispatch = router.routes();
+    await dispatch(requestHelper(textMessage));
+    expect(route).toEqual([2]);
+  });
+
+  test("should source is 'user' for 'from message' route", async () => {
+    const route = [];
+
+    router.messageFrom("user", /test/, async (ctx, next) => {
+      route.push(1);
+    });
+
+    router.messageFrom("group", /test/, async (ctx, next) => {
+      route.push(2);
+    });
+
+    router.message(/test/, async (ctx, next) => {
+      route.push(3);
+    });
+
+    textMessage.message.text = "test";
+
+    const dispatch = router.routes();
+    await dispatch(requestHelper(textMessage));
+    expect(route).toEqual([1]);
   });
 });

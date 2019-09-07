@@ -11,6 +11,7 @@ export default class Layer {
   private from: string[] = [];
   private message: RegExp = null;
   private stack: HandleFunction[] = [];
+  private fromRegex: RegExp = null;
 
   constructor(
     types: string[],
@@ -18,7 +19,10 @@ export default class Layer {
     message: RegExp,
     fn: HandleFunction[]
   ) {
-    this.types = types;
+    this.types = types.map(type => {
+      const index = type.indexOf("From");
+      return index > -1 ? type.substr(0, index) : type;
+    });
     this.from = from;
     this.message = message;
 
@@ -60,7 +64,6 @@ export default class Layer {
     }
 
     let text = this.matchRegexMessage(event);
-    console.log(this.message, text);
     if (this.message !== null && text) {
       messageMatched = this.message.test(text);
     }
