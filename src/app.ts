@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import { Context as koaContext } from "koa";
-import { WebhookEvent, WebhookRequestBody } from "@line/bot-sdk";
+import { WebhookEvent, Client, ClientConfig } from "@line/bot-sdk";
 import compose from "./lib/compose";
 import * as _ from "lodash";
 import {
@@ -16,7 +16,8 @@ import Layer from "./lib/layer";
 import { LoggerFilename } from "./logger";
 const logger = LoggerFilename(__filename);
 
-type ValueOf<T> = T[keyof T];
+const lineClient: Client = null;
+
 type MessageEventStrings = keyof typeof MessageEvent | CustomMessageEvent;
 
 export default class MessageRouter implements allowEvent {
@@ -160,7 +161,11 @@ export default class MessageRouter implements allowEvent {
     );
   }
 
-  public async dispatchEvent(ctx: koaContext, event: WebhookEvent) {
+  public async dispatchEvent(
+    koaCtx: koaContext,
+    event: WebhookEvent,
+    client: Client
+  ) {
     return new Promise((resolve, reject) => {
       const matchedLayers: HandleFunction[] = [];
       this.stack.forEach(layer => {
@@ -170,7 +175,7 @@ export default class MessageRouter implements allowEvent {
         }
       });
 
-      logger.info("[dispatchEvent]:", matchedLayers.length);
+      const ctx = new Context(koaCtx, event, client);
 
       const fn = compose(matchedLayers);
       fn(ctx)
@@ -182,17 +187,33 @@ export default class MessageRouter implements allowEvent {
   /**
    * @api private
    */
-  public routes() {
-    return async (ctx: koaContext) => {
-      const reqBody: WebhookRequestBody = ctx.request.body;
-      const events: WebhookEvent[] = reqBody.events;
+  public routes(config: ClientConfig) {
+    let client = lineClient;
+    if (!client) {
+      logger.info("new line clinet instance");
+      client = new Client(config);
+    }
+
+    return async (ctx: koaContext, next: () => Promise<any>) => {
+      const { method, path, body } = ctx.request;
+      if (method !== "post" && path !== "/callback") {
+        return await next();
+      }
+
+      if (!body.events) {
+        logger.warn("event is undefined.");
+        return await next();
+      }
+
+      const events: WebhookEvent[] = body.events;
 
       try {
-        logger.info(" ++++++ routes start ++++++ ");
-        ctx.body = await Promise.all(
-          events.map(evnet => this.dispatchEvent(ctx, evnet))
+        logger.info(" ++++++++++++ routes start ++++++++++++ ");
+        await Promise.all(
+          events.map(evnet => this.dispatchEvent(ctx, evnet, client))
         );
-        logger.info(" ++++++ routes done ++++++ ");
+        ctx.body = null;
+        logger.info(" ++++++++++++ routes done ++++++++++++ ");
       } catch (err) {
         console.error(err);
         ctx.status = 500;

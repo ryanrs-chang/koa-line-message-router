@@ -2,6 +2,13 @@ import MessageRouter from "../src/app";
 import joinMessage from "./messages/join";
 import textMessage from "./messages/textMessage";
 import { Context } from "koa";
+import { ClientConfig } from "@line/bot-sdk";
+import { channelAccessToken, channelSecret } from "../src/config";
+
+const config: ClientConfig = {
+  channelAccessToken,
+  channelSecret
+};
 
 function delay(ms = 1) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -41,7 +48,7 @@ describe("testing middleware", () => {
       route.push(4);
     });
 
-    const dispatch = router.routes();
+    const dispatch = router.routes(config);
     await dispatch(requestHelper(joinMessage));
     expect(route).toEqual([1, 3, 4, 2]);
   });
@@ -61,7 +68,7 @@ describe("testing middleware", () => {
       route.push(4);
     });
 
-    const dispatch = router.routes();
+    const dispatch = router.routes(config);
     await dispatch(requestHelper(joinMessage));
     expect(route).toEqual([1, 3, 2, 4]);
   });
@@ -89,7 +96,7 @@ describe("testing middleware", () => {
       route.push(6);
     });
 
-    const dispatch = router.routes();
+    const dispatch = router.routes(config);
     await dispatch(requestHelper(joinMessage));
     expect(route).toEqual([1, 3, 6, 4, 2]);
   });
@@ -117,7 +124,7 @@ describe("testing middleware", () => {
       route.push(6);
     });
 
-    const dispatch = router.routes();
+    const dispatch = router.routes(config);
     await dispatch(requestHelper(joinMessage));
     expect(route).toEqual([1, 4, 6, 5, 2]);
   });
@@ -145,7 +152,7 @@ describe("testing middleware", () => {
       route.push(6);
     });
 
-    const dispatch = router.routes();
+    const dispatch = router.routes(config);
     await dispatch(requestHelper(joinMessage));
     expect(route).toEqual([1, 3, 2]);
   });
@@ -170,7 +177,7 @@ describe("testing middleware", () => {
       }
     );
 
-    const dispatch = router.routes();
+    const dispatch = router.routes(config);
     await dispatch(requestHelper(joinMessage));
     expect(route).toEqual([1, 3, 5, 4, 2]);
   });
@@ -198,7 +205,7 @@ describe("testing multi events", () => {
       joinRoute.push(4);
     });
 
-    const dispatch = router.routes();
+    const dispatch = router.routes(config);
     await dispatch(requestHelper(joinMessage, textMessage));
     expect(messageRoute).toEqual([1, 2]);
     expect(joinRoute).toEqual([3, 4]);
@@ -217,7 +224,7 @@ describe("testing multi events", () => {
 
     textMessage.message.text = "test";
 
-    const dispatch = router.routes();
+    const dispatch = router.routes(config);
     await dispatch(requestHelper(textMessage));
     expect(route).toEqual([2]);
   });
@@ -239,8 +246,27 @@ describe("testing multi events", () => {
 
     textMessage.message.text = "test";
 
-    const dispatch = router.routes();
+    const dispatch = router.routes(config);
     await dispatch(requestHelper(textMessage));
     expect(route).toEqual([1]);
+  });
+});
+
+describe("testing middleware with context ", () => {
+  let router: MessageRouter = null;
+  beforeEach(() => {
+    router = new MessageRouter();
+  });
+
+  test("two middleware", async () => {
+    const route = [];
+    router.use(async (ctx, next) => {
+      route.push(ctx.event.type);
+      await next();
+    });
+
+    const dispatch = router.routes(config);
+    await dispatch(requestHelper(joinMessage));
+    expect(route).toEqual([joinMessage.type]);
   });
 });

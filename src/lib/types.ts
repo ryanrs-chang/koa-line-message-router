@@ -1,10 +1,3 @@
-import { WebhookEvent, EventSource } from "@line/bot-sdk";
-import koa, { Context as koaContext } from "koa";
-
-// export type Context = {
-//   event: WebhookEvent;
-//   koa: koaContext;
-// };
 import Context from "./context";
 
 export type HandleFunction = (
