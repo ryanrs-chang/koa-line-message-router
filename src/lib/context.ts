@@ -8,12 +8,12 @@ export default class Context {
   private _event: WebhookEvent;
   private _app: MessageRouter;
 
-  constructor(koaContext: koaContext, event: WebhookEvent, client: Client) {
+  constructor(koaContext: koaContext, event: WebhookEvent, client?: Client) {
     this._koaContext = koaContext;
     this._client = client;
     this._event = event;
 
-    if (this._event["replyToken"]) {
+    if (client && this._event["replyToken"]) {
       this.$replyMessage = this._client.replyMessage.bind(
         this,
         this._event["replyToken"]

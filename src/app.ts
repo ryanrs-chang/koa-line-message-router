@@ -2,15 +2,10 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import { Context as koaContext } from "koa";
-import { WebhookEvent, Client, ClientConfig } from "@line/bot-sdk";
+import { WebhookEvent, Client, ClientConfig, EventSource } from "@line/bot-sdk";
 import compose from "./lib/compose";
 import * as _ from "lodash";
-import {
-  HandleFunction,
-  MessageEvent,
-  CustomMessageEvent,
-  allowEvent
-} from "./lib/types";
+import { HandleFunction, MessageEvent, allowEvent } from "./lib/types";
 import Context from "./lib/context";
 import Layer from "./lib/layer";
 import { LoggerFilename } from "./logger";
@@ -18,19 +13,12 @@ const logger = LoggerFilename(__filename);
 
 const lineClient: Client = null;
 
-type MessageEventStrings = keyof typeof MessageEvent | CustomMessageEvent;
+type MessageEventStrings = keyof typeof MessageEvent;
 
 export default class MessageRouter implements allowEvent {
   message(message: RegExp, ...middlewares: HandleFunction[]): this;
   message(...middlewares: HandleFunction[]): this;
   message(message?: any, ...middlewares: any[]): this {
-    throw new Error("Method not implemented.");
-  }
-  messageFrom(
-    source: string,
-    message: RegExp,
-    ...middlewares: HandleFunction[]
-  ): this {
     throw new Error("Method not implemented.");
   }
   follow(...middlewares: HandleFunction[]): this {
@@ -82,37 +70,46 @@ export default class MessageRouter implements allowEvent {
         this[value] = this.addMiddlewareToStack.bind(this, value);
       }
     });
-
-    //
-    // 'from' event
-    //
-    Object.keys(CustomMessageEvent).forEach((key: string) => {
-      const value: MessageEventStrings = CustomMessageEvent[key];
-      if (_.isFunction(this[value])) {
-        logger.debug("bind:", value);
-        this[value] = this.addMiddlewareToStack.bind(this, value);
-      }
-    });
   }
   constructor() {
     this.stack = [];
     this.bindAllMappingFunction();
   }
 
-  use(...middlewares: HandleFunction[]) {
-    if (!_.isArray(middlewares)) {
-      throw new TypeError("please check handle function");
-    }
+  use(source: string, middleware: HandleFunction | MessageRouter);
+  use(middleware: HandleFunction | MessageRouter);
+  use() {
+    let middleware: HandleFunction | MessageRouter = null;
+    let source: string = null;
 
-    for (let middleware of middlewares) {
-      if (!_.isFunction(middleware)) {
-        throw new TypeError("please check handle function type");
+    let i: number = 0;
+    if (_.isString(arguments[i])) {
+      source = arguments[i];
+      if (source !== "user" && source !== "group" && source !== "room") {
+        throw new TypeError(
+          "source not found. this support 'user', 'group' and 'room'"
+        );
       }
-
-      const layer: Layer = new Layer(["all"], ["all"], null, [middleware]);
-      this.stack.push(layer);
+      i++;
     }
-    return this;
+
+    if (_.isFunction(arguments[i]) || arguments[i] instanceof MessageRouter) {
+      middleware = arguments[i];
+      i++;
+    }
+
+    if (i === 0) throw new TypeError("please check handle function type");
+
+    const tmpSource = source ? [source as string] : ["all"];
+
+    let fn: HandleFunction[] =
+      middleware instanceof MessageRouter
+        ? middleware.stack.map(layer => layer.dispatch.bind(layer))
+        : [middleware];
+
+    const layer: Layer = new Layer(["all"], tmpSource, null, fn);
+
+    this.stack.push(layer);
   }
 
   private addMiddlewareToStack(type: string) {
@@ -164,7 +161,7 @@ export default class MessageRouter implements allowEvent {
   public async dispatchEvent(
     koaCtx: koaContext,
     event: WebhookEvent,
-    client: Client
+    client?: Client
   ) {
     return new Promise((resolve, reject) => {
       const matchedLayers: HandleFunction[] = [];
@@ -221,10 +218,3 @@ export default class MessageRouter implements allowEvent {
     };
   }
 }
-
-// image
-// video
-// audio
-// file
-// location
-// sticker

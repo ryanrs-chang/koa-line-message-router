@@ -21,19 +21,18 @@ export enum MessageEvent {
   ThingsExecution = "thingsExecution"
 }
 
-export enum CustomMessageEvent {
-  MessageFrom = "messageFrom"
+export enum MessageType {
+  Image = "image",
+  Video = "video",
+  Audio = "audio",
+  File = "file",
+  Location = "location",
+  Sticke = "sticke"
 }
 
 export interface allowEvent {
   message(message: RegExp, ...middlewares: HandleFunction[]): this;
   message(...middlewares: HandleFunction[]): this;
-  messageFrom(
-    source: string,
-    message: RegExp,
-    ...middlewares: HandleFunction[]
-  ): this;
-
   follow(...middlewares: HandleFunction[]): this;
   unfollow(...middlewares: HandleFunction[]): this;
   join(...middlewares: HandleFunction[]): this;

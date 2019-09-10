@@ -4,6 +4,7 @@ import { WebhookEvent } from "@line/bot-sdk";
 import compose from "./compose";
 import Context from "./context";
 import { LoggerFilename } from "../logger";
+import MessageRouter from "../app";
 const logger = LoggerFilename(__filename);
 
 export default class Layer {
@@ -11,7 +12,6 @@ export default class Layer {
   private from: string[] = [];
   private message: RegExp = null;
   private stack: HandleFunction[] = [];
-  private fromRegex: RegExp = null;
 
   constructor(
     types: string[],
@@ -27,6 +27,7 @@ export default class Layer {
     this.message = message;
 
     this.stack = _.isArray(fn) ? fn : [fn];
+
     logger.debug("stack length:", this.stack.length);
   }
 
