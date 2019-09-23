@@ -184,7 +184,7 @@ describe("testing middleware", () => {
     expect(route).toEqual([1, 3, 5, 4, 2]);
   });
 
-  test.only("test handle type is MessageRouter", async () => {
+  test("test handle type is MessageRouter", async () => {
     const route = [];
 
     const another: MessageRouter = new MessageRouter();
@@ -206,7 +206,7 @@ describe("testing middleware", () => {
 
     const dispatch = router.routes(config);
     await dispatch(requestHelper(textMessage), Promise.resolve);
-    expect(route).toEqual([1, 3, 5, 4, 2]);
+    expect(route).toEqual([1, 10, 2]);
   });
 });
 
@@ -235,10 +235,10 @@ describe("testing multi events", () => {
     const dispatch = router.routes(config);
     await dispatch(requestHelper(textMessage), Promise.resolve);
     expect(messageRoute).toEqual([1, 2]);
-    expect(joinRoute).toEqual([3, 4]);
+    expect(joinRoute).toEqual([]);
   });
 
-  test("shdould 'test' regext is successful for specific message route", async () => {
+  test("should 'test' regex is successful for specific message route", async () => {
     const route = [];
 
     router.message(/route 1/, async (ctx, next) => {
@@ -256,26 +256,76 @@ describe("testing multi events", () => {
     expect(route).toEqual([2]);
   });
 
-  test.skip("should source is 'user' for 'from message' route", async () => {
+  test("should 'test' regex is successful for specific message route", async () => {
     const route = [];
 
-    // router.messageFrom("user", /test/, async (ctx, next) => {
-    //   route.push(1);
-    // });
+    router.message(async (ctx, next) => {
+      route.push(1);
+      await next();
+      route.push(2);
+    });
 
-    // router.messageFrom("group", /test/, async (ctx, next) => {
-    //   route.push(2);
-    // });
+    router.message(/test/, async (ctx, next) => {
+      route.push(3);
+      await next();
+      route.push(4);
+    });
 
-    // router.message(/test/, async (ctx, next) => {
-    //   route.push(3);
-    // });
+    textMessage.message.text = "testtest";
 
-    // textMessage.message.text = "test";
+    const dispatch = router.routes(config);
+    await dispatch(requestHelper(textMessage), Promise.resolve);
+    expect(route).toEqual([1, 3, 4, 2]);
+  });
 
-    // const dispatch = router.routes(config);
-    // await dispatch(requestHelper(textMessage), Promise.resolve);
-    expect(route).toEqual([1]);
+  test("should routing successful, match function is string type", async () => {
+    const route = [];
+
+    router.message(async (ctx, next) => {
+      route.push(1);
+      await next();
+      route.push(2);
+    });
+
+    router.message("test", async (ctx, next) => {
+      route.push(3);
+      await next();
+      route.push(4);
+    });
+
+    textMessage.message.text = "test";
+
+    const dispatch = router.routes(config);
+    await dispatch(requestHelper(textMessage), Promise.resolve);
+    expect(route).toEqual([1, 3, 4, 2]);
+  });
+
+  test("should routing successful, match function is string type and regex type", async () => {
+    const route = [];
+
+    router.message(async (ctx, next) => {
+      route.push(1);
+      await next();
+      route.push(2);
+    });
+
+    router.message("test", async (ctx, next) => {
+      route.push(3);
+      await next();
+      route.push(4);
+    });
+
+    router.message(/another/, async (ctx, next) => {
+      route.push(5);
+      await next();
+      route.push(6);
+    });
+
+    textMessage.message.text = "another";
+
+    const dispatch = router.routes(config);
+    await dispatch(requestHelper(textMessage), Promise.resolve);
+    expect(route).toEqual([1, 5, 6, 2]);
   });
 });
 

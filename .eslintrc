@@ -17,6 +17,6 @@
       "double"
     ],
     "@typescript-eslint/explicit-function-return-type": "off",
-    "@typescript-eslint/no-explicit-any": "true"
+    "@typescript-eslint/no-explicit-any": "false"
   }
 }

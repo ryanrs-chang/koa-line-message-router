@@ -31,7 +31,7 @@ export enum MessageType {
 }
 
 export interface allowEvent {
-  message(message: RegExp, ...middlewares: HandleFunction[]): this;
+  message(message: RegExp | string, ...middlewares: HandleFunction[]): this;
   message(...middlewares: HandleFunction[]): this;
   follow(...middlewares: HandleFunction[]): this;
   unfollow(...middlewares: HandleFunction[]): this;

@@ -9,6 +9,9 @@ import { HandleFunction, MessageEvent, allowEvent } from "./lib/types";
 import Context from "./lib/context";
 import Layer from "./lib/layer";
 import { LoggerFilename } from "./logger";
+
+export * from "./middleware";
+
 const logger = LoggerFilename(__filename);
 
 const lineClient: Client = null;
@@ -16,7 +19,7 @@ const lineClient: Client = null;
 type MessageEventStrings = keyof typeof MessageEvent;
 
 export default class MessageRouter implements allowEvent {
-  message(message: RegExp, ...middlewares: HandleFunction[]): this;
+  message(message: RegExp | string, ...middlewares: HandleFunction[]): this;
   message(...middlewares: HandleFunction[]): this;
   message(message?: any, ...middlewares: any[]): this {
     throw new Error("Method not implemented.");
@@ -64,10 +67,10 @@ export default class MessageRouter implements allowEvent {
     // basic event
     //
     Object.keys(MessageEvent).forEach((key: string) => {
-      const value: MessageEventStrings = MessageEvent[key];
-      if (_.isFunction(this[value])) {
+      const value: MessageEventStrings = _.get(MessageEvent, key);
+      if (_.isFunction(_.get(this, value))) {
         logger.debug("bind:", value);
-        this[value] = this.addMiddlewareToStack.bind(this, value);
+        _.set(this, value, this.addMiddlewareToStack.bind(this, value));
       }
     });
   }
@@ -76,8 +79,8 @@ export default class MessageRouter implements allowEvent {
     this.bindAllMappingFunction();
   }
 
-  use(source: string, middleware: HandleFunction | MessageRouter);
-  use(middleware: HandleFunction | MessageRouter);
+  use(source: string, middleware: HandleFunction | MessageRouter): any;
+  use(middleware: HandleFunction | MessageRouter): any;
   use() {
     let middleware: HandleFunction | MessageRouter = null;
     let source: string = null;
@@ -100,32 +103,21 @@ export default class MessageRouter implements allowEvent {
 
     if (i === 0) throw new TypeError("please check handle function type");
 
-    const tmpSource = source ? [source as string] : ["all"];
-
     let fn: HandleFunction[] =
       middleware instanceof MessageRouter
         ? middleware.stack.map(layer => layer.dispatch.bind(layer))
         : [middleware];
 
-    const layer: Layer = new Layer(["all"], tmpSource, null, fn);
+    const layer: Layer = new Layer(["all"], null, fn);
 
     this.stack.push(layer);
   }
 
   private addMiddlewareToStack(type: string) {
-    let from: string = "all";
-    let message: RegExp = null;
+    let message: RegExp | string = null;
 
     if (!_.isString(arguments[0])) {
       throw TypeError("type not found");
-    }
-
-    if (_.isString(arguments[1])) {
-      const tmpFrom = arguments[1];
-      if (tmpFrom !== "user" && tmpFrom !== "group" && tmpFrom !== "room") {
-        throw TypeError("source type not found");
-      }
-      from = tmpFrom;
     }
 
     let index: number = 0;
@@ -133,28 +125,26 @@ export default class MessageRouter implements allowEvent {
     logger.info(arguments.length);
 
     while (++index < arguments.length) {
-      if (_.isRegExp(arguments[index])) {
-        message = arguments[index];
+      const arg = arguments[index];
+      if (_.isRegExp(arg) || _.isString(arg)) {
+        message = arg;
+        continue;
       }
-      if (_.isFunction(arguments[index])) {
+      if (_.isFunction(arg)) {
         funcIndex = index;
         break;
       }
     }
 
     for (let i = funcIndex; i < arguments.length; i++) {
-      if (!_.isFunction(arguments[i])) {
+      const fn = arguments[i];
+      if (!_.isFunction(fn)) {
         throw TypeError("middleware need to function type");
       }
     }
 
     this.stack.push(
-      new Layer(
-        [type],
-        [from],
-        message,
-        Array.prototype.slice.call(arguments, index)
-      )
+      new Layer([type], message, Array.prototype.slice.call(arguments, index))
     );
   }
 

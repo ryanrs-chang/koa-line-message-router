@@ -1,13 +1,13 @@
 import debug from "debug";
 
 export default class Logger {
-  public INFO = "[I]";
-  public DEBUG = "[D]";
-  public WARN = "[W]";
-  public ERROR = "[E]";
+  public INFO = "I";
+  public DEBUG = "D";
+  public WARN = "W";
+  public ERROR = "E";
 
   constructor(ns: string) {
-    const prefix = `[L-Router][${ns}]`;
+    const prefix = `msgRouter:${ns}:`;
 
     this.info = debug(`${prefix}${this.INFO}`).bind(this);
     this.debug = debug(`${prefix}${this.DEBUG}`).bind(this);
