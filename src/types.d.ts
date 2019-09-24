@@ -7,6 +7,6 @@ type SequelizeAttribute =
 
 declare global {
   type SequelizeAttributes<T extends { [key: string]: any }> = {
-    [P in keyof T]: SequelizeAttribute
+    [P in keyof T]: SequelizeAttribute;
   };
 }

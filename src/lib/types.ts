@@ -1,4 +1,9 @@
 import Context from "./context";
+import { ClientConfig } from "@line/bot-sdk";
+
+export type RouterConfig = {
+  path?: string;
+} & ClientConfig;
 
 export type HandleFunction = (
   ctx: Context,

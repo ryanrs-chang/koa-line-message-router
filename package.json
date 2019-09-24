@@ -2,7 +2,7 @@
   "name": "koa-line-message-router",
   "version": "0.0.1",
   "description": "",
-  "main": "dist/app.js",
+  "main": "dist/index.js",
   "repository": {
     "type": "git"
   },

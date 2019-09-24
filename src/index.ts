@@ -1,18 +1,28 @@
 import dotenv from "dotenv";
 dotenv.config();
 
+import { LoggerFilename } from "./logger";
+const logger = LoggerFilename(__filename);
+
 import { Context as koaContext } from "koa";
-import { WebhookEvent, Client, ClientConfig, EventSource } from "@line/bot-sdk";
+import { WebhookEvent, Client } from "@line/bot-sdk";
 import compose from "./lib/compose";
 import * as _ from "lodash";
-import { HandleFunction, MessageEvent, allowEvent } from "./lib/types";
+import {
+  HandleFunction,
+  MessageEvent,
+  allowEvent,
+  RouterConfig
+} from "./lib/types";
 import Context from "./lib/context";
 import Layer from "./lib/layer";
-import { LoggerFilename } from "./logger";
+import { lineSignature } from "./middleware";
 
+//
+// export
+//
 export * from "./middleware";
-
-const logger = LoggerFilename(__filename);
+export * from "./lib/context";
 
 const lineClient: Client = null;
 
@@ -83,19 +93,8 @@ export default class MessageRouter implements allowEvent {
   use(middleware: HandleFunction | MessageRouter): any;
   use() {
     let middleware: HandleFunction | MessageRouter = null;
-    let source: string = null;
 
     let i: number = 0;
-    if (_.isString(arguments[i])) {
-      source = arguments[i];
-      if (source !== "user" && source !== "group" && source !== "room") {
-        throw new TypeError(
-          "source not found. this support 'user', 'group' and 'room'"
-        );
-      }
-      i++;
-    }
-
     if (_.isFunction(arguments[i]) || arguments[i] instanceof MessageRouter) {
       middleware = arguments[i];
       i++;
@@ -122,7 +121,6 @@ export default class MessageRouter implements allowEvent {
 
     let index: number = 0;
     let funcIndex: number = 0;
-    logger.info(arguments.length);
 
     while (++index < arguments.length) {
       const arg = arguments[index];
@@ -172,18 +170,35 @@ export default class MessageRouter implements allowEvent {
   }
 
   /**
-   * @api private
+   * check request whether come from line
+   * @param config client config for line
    */
-  public routes(config: ClientConfig) {
+  public lineSignature(config: RouterConfig) {
+    return lineSignature(config);
+  }
+
+  /**
+   * @param {RouterConfig}
+   */
+  public routes(
+    config: RouterConfig = {
+      path: "/callback",
+      channelAccessToken: undefined,
+      channelSecret: undefined
+    }
+  ) {
     let client = lineClient;
     if (!client) {
-      logger.info("new line clinet instance");
+      logger.info("create line clinet instance");
       client = new Client(config);
     }
 
+    /**
+     * Middleware
+     */
     return async (ctx: koaContext, next: () => Promise<any>) => {
       const { method, path, body } = ctx.request;
-      if (method !== "post" && path !== "/callback") {
+      if (method !== "post" && path !== config.path) {
         return await next();
       }
 

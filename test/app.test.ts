@@ -1,13 +1,14 @@
-import MessageRouter from "../src/app";
+import MessageRouter from "../src";
 import joinMessage from "./messages/join";
 import textMessage from "./messages/textMessage";
 import { Context } from "koa";
-import { ClientConfig } from "@line/bot-sdk";
 import { channelAccessToken, channelSecret } from "../src/config";
+import { RouterConfig } from "../src/lib/types";
 
-const config: ClientConfig = {
+const config: RouterConfig = {
   channelAccessToken,
-  channelSecret
+  channelSecret,
+  path: "/callback"
 };
 
 function delay(ms = 1) {
@@ -188,6 +189,7 @@ describe("testing middleware", () => {
     const route = [];
 
     const another: MessageRouter = new MessageRouter();
+
     another.message(async ctx => {
       route.push(10);
     });
@@ -198,7 +200,7 @@ describe("testing middleware", () => {
       route.push(2);
     });
 
-    router.use("group", another);
+    router.use(another);
 
     router.join(async ctx => {
       route.push(5);

@@ -3,7 +3,8 @@ import koa from "koa";
 import { createHmac } from "crypto";
 import { isEqual } from "lodash";
 import Context from "./lib/context";
-export function LineMiddleware(config: line.Config) {
+
+export function lineSignature(config: line.Config) {
   return async function(ctx: koa.Context, next: Function) {
     const signature = ctx.headers["x-line-signature"] as string;
 

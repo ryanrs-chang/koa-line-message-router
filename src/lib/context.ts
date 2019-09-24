@@ -1,7 +1,7 @@
 import { Context as koaContext } from "koa";
 import { Client, WebhookEvent } from "@line/bot-sdk";
 import { Message } from "@line/bot-sdk/lib/types";
-import MessageRouter from "../app";
+import MessageRouter from "..";
 import * as _ from "lodash";
 
 export default class Context {
