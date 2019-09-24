@@ -1,3 +1,9 @@
+faster build your line robot.
+
+* decrease `if.. else..` code segments
+* more clean code
+* build prototype to faster
+
 # Installation
 
 ```
@@ -13,21 +19,13 @@ const app = new Koa();
 
 const msgRouter = new MessageRouter();
 
-msgRouter.use(async function middleware(ctx, next) {
-  const start = new Date();
-  await next()
-  const ms = new Date() - start;
-  console.log("message response time")
-})
+msgRouter.message(/help/g, ctx => {
+  //
+  // handle Message event
+  //
+};
 
-msgRouter.message(
-  async (ctx, next) => {
-    //
-    // do something
-    //
-    await next()
-  },
-  ctx => {
+msgRouter.message(/test/g, ctx => {
   //
   // handle Message event
   //
@@ -39,7 +37,12 @@ msgRouter.join(ctx => {
   //
 };
 
-app.use(msgRouter.routes());
+app.use(msgRouter.routes(...));
 
 app.listen(3000);
 ```
+
+
+# TODO
+
+ * [ ] Message View
